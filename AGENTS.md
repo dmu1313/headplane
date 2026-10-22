@@ -98,3 +98,31 @@ release. `main` deploys the separate beta docs.
 - Docs fixes for a released version go to its `release/X.Y` branch. Pushing
   docs changes there rebuilds that line's archives under its newest release and
   republishes, without a new release.
+
+## Cursor Cloud specific instructions
+
+Node 24.22.1 and pnpm 10.4.0 are on `PATH` (`engines` wants Node >=24.2 <25
+and pnpm 10.4.x). Go 1.27.2 is installed for `hp_agent`, `hp_ssh`, and
+`hp_healthcheck`. Docker 29.9.2 is installed with fuse-overlayfs and
+iptables-legacy, and the daemon is started on boot.
+
+- `pnpm install --frozen-lockfile`
+- `pnpm test:unit`, `pnpm run lint`, `pnpm run typecheck`
+- `go build -o /tmp/hp_agent ./cmd/hp_agent`
+
+`pnpm dev` also runs `docker compose up`. `compose.yaml` mounts the
+gitignored `./test` directory and expects mkcert files in
+`./test/caddy/certs`, so it is not a working stack until those exist. To
+exercise the UI against a Headscale process on this machine, set
+`HEADPLANE_CONFIG_PATH` to a config whose `headscale.url` is
+`http://127.0.0.1:8080`, create a key with `headscale apikeys create`, and
+sign in at `http://127.0.0.1:3000/admin/login`. Headscale's `cmd/dev`
+wrapper exits after startup on current `main` (string user ids); use
+`headscale serve -c <config>`.
+
+`tests/integration/setup/start-tailscale.ts` starts Tailscale with host
+networking and does not pass `/dev/net/tun`. On this VM a host-network
+container cannot open that device unless it is privileged or started with
+`--device /dev/net/tun` and `NET_ADMIN`. Root on the host can create a TUN
+device; unprivileged processes cannot. WireGuard is built into the kernel.
+`/lib/modules` is absent.
